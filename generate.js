@@ -5,9 +5,7 @@
 const path = require('path'),
   util = require('util'),
   fs = require('fs'),
-  exec = util.promisify(require('child_process').exec),
   rd = require('rd'),
-  inquirer = require('inquirer'),
   program = require('commander'),
   chalk = require('chalk'),
   shell = require('shelljs'),
@@ -258,8 +256,8 @@ function deleteProj() {
 program
   .version('0.0.1')
   .description('项目生成器')
-  .option('-i, --id <id>', 'pageID 页面 id')
-  .option('-b, --build <id>', '重新构建一个项目')
+  .option('-g, --generate <id>', '生成页面项目')
+  .option('-b, --build <id>', '构建一个项目')
   .option('-l, --list', '列出所有页面')
   .option('-d, --delete <id>', '删除项目')
   .action(option => {
@@ -273,8 +271,8 @@ program
       console.log('\n');
       return;
     }
-    if (option.id) {
-      const id = option.id;
+    if (option.generate) {
+      const id = option.generate;
       if (existsPageDir(id)) {
         console.log(chalk.red('\n项目已经存在, 尝试重新构建\n'));
         generate_page(option.id);
