@@ -1,0 +1,1 @@
+import '@banner-man/render/index';import '@banner-man/widget-tabs/index';import '@banner-man/widget-container/index';import '@banner-man/widget-search/index';import '@banner-man/widget-button/index';
