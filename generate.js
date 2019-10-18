@@ -196,8 +196,8 @@ function generate_project(id) {
   const _dir = path.join(projectDir, id);
   if (!fsExistsSync(_dir)) {
     shell.mkdir(_dir);
-    generate_page(id);
   }
+  generate_page(id);
 }
 
 function generate_page(id) {
@@ -308,3 +308,8 @@ program
   });
 
 program.parse(process.argv);
+
+module.exports = {
+  generate_page,
+  generate_project,
+};

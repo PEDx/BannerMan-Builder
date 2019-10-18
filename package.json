@@ -35,5 +35,7 @@
   "bin": {
     "bmbuilder": "generate.js"
   },
-  "dependencies": {}
+  "dependencies": {
+    "express": "^4.17.1"
+  }
 }
