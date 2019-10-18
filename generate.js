@@ -170,7 +170,7 @@ function injectScript2Html(html_path, dest_dir, pageData) {
         reject(err);
         return;
       }
-      const data_str = `<script type="text/javascript">window.pageData = ${JSON.stringify(
+      const data_str = `<script type="text/javascript">window.BANNER_MAN_PAGE_DATA = ${JSON.stringify(
         pageData,
       )};</script>`;
       const html_data = data.replace(data_inject_comment, data_str);
