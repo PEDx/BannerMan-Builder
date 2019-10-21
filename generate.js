@@ -273,6 +273,7 @@ function generate_page(id) {
       writePkgFile(pkg_path, _dir, installWidgetVersionMap, pageData),
     ]).then(() => {
       console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
+      shell.exec(`cd ${_dir} && npm version patch`);
       commit = gitCommit(id);
       build(id);
     });
@@ -294,7 +295,6 @@ async function build(id) {
   console.log(chalk.yellow(`\n安装依赖中...\n`));
   shell.exec(`cd ${_dir} && npm install`);
   console.log(chalk.yellow(`安装完成\n`));
-  shell.exec(`cd ${_dir} && npm version patch`);
   if (fsExistsSync(dest_dir)) {
     shell.rm('-r', dest_dir);
   }
