@@ -1,9 +1,9 @@
 {
   "name": "5d4abeba65b2987cbf0f86dd",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.0.10",
   "description": "Page Created by BannerMan",
-  "author": "000000000000000000000000",
+  "author": "pengdong",
   "dependencies": {
     "@banner-man/render": "0.0.8",
     "@banner-man/common": "0.0.3",

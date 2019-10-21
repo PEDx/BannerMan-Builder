@@ -157,9 +157,10 @@ function writeIndexFile(js_path, dest_dir, importWidgetMap) {
 function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
   const dest_pkg_path = path.join(dest_dir, pkgFileName);
   console.log(chalk.blue(`\n正在生成 package.json \nfile: ${dest_pkg_path}`));
-  const read_pkg_path = '';
   return new Promise((resolve, reject) => {
-    read_pkg_path = fsExistsSync(dest_pkg_path) ? dest_pkg_path : pkg_path;
+    const read_pkg_path = fsExistsSync(dest_pkg_path)
+      ? dest_pkg_path
+      : pkg_path;
     fs.readFile(read_pkg_path, { encoding: 'utf-8' }, (err, data) => {
       if (err) {
         reject(err);
@@ -170,7 +171,8 @@ function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
         pkg = JSON.parse(data);
       } catch (error) {}
       pkg.name = pageData.id;
-      pkg.author = pageData.creater || 'banner man';
+      console.log(pageData);
+      pkg.author = pageData.creater_name || 'banner man';
       // 更新依赖
       Object.keys(installWidgetVersionMap).forEach(key => {
         pkg.dependencies[key] = installWidgetVersionMap[key];
@@ -274,7 +276,7 @@ function generate_page(id) {
     ]).then(() => {
       console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
       shell.exec(`cd ${_dir} && npm version patch`);
-      commit = gitCommit(id);
+      // commit = gitCommit(id);
       build(id);
     });
   });
