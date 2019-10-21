@@ -155,13 +155,12 @@ function writeIndexFile(js_path, dest_dir, importWidgetMap) {
   });
 }
 function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
-  console.log(
-    chalk.blue(
-      `\n正在生成 package.json \nfile: ${path.join(dest_dir, pkgFileName)}`,
-    ),
-  );
+  const dest_pkg_path = path.join(dest_dir, pkgFileName);
+  console.log(chalk.blue(`\n正在生成 package.json \nfile: ${dest_pkg_path}`));
+  const read_pkg_path = '';
   return new Promise((resolve, reject) => {
-    fs.readFile(pkg_path, { encoding: 'utf-8' }, (err, data) => {
+    read_pkg_path = fsExistsSync(dest_pkg_path) ? dest_pkg_path : pkg_path;
+    fs.readFile(read_pkg_path, { encoding: 'utf-8' }, (err, data) => {
       if (err) {
         reject(err);
         return;
@@ -172,11 +171,12 @@ function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
       } catch (error) {}
       pkg.name = pageData.id;
       pkg.author = pageData.creater || 'banner man';
+      // 更新依赖
       Object.keys(installWidgetVersionMap).forEach(key => {
         pkg.dependencies[key] = installWidgetVersionMap[key];
       });
       fs.writeFile(
-        path.join(dest_dir, pkgFileName),
+        dest_pkg_path,
         JSON.stringify(pkg),
         {
           encoding: 'utf-8',
