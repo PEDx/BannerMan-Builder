@@ -1,6 +1,7 @@
 {
   "name": "banner-man-builder",
   "private": true,
+  "version": "0.0.1",
   "devDependencies": {
     "babel-core": "^6.26.3",
     "babel-loader": "^7.1.5",

@@ -14,6 +14,7 @@ const path = require('path');
 // see below for details on the options
 const inputOptions = (src_dir, dest_dir) => ({
   input: path.join(src_dir, 'index.js'),
+  external: ['vue'],
   plugins: [
     resolve({
       extensions: ['.js', '.vue', '.json'],

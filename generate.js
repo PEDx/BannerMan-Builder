@@ -10,7 +10,7 @@ const path = require('path'),
   chalk = require('chalk'),
   shell = require('shelljs'),
   http = require('http');
-
+let commit = '';
 const rollupBuild = require('./build.js');
 // 生成项目
 const projectDir = './project';
@@ -19,7 +19,9 @@ const indexFileName = 'index.js';
 const htmlFileName = 'index.html';
 const pkgFileName = 'package.json';
 const http_api_path = 'http://192.168.27.234:6060/api/v1/page';
+const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
+const pkg_scope_prefix = '@banner-man/';
 const widgetVersion = {
   render: '^0.0.3',
   common: '0.0.2',
@@ -28,8 +30,9 @@ const widgetVersion = {
   'widget-tabs': '0.0.2',
   'widget-search': '0.0.2',
 };
+let deploy_info = {};
 function getWidgetImportStr(widgetName) {
-  return `import '@banner-man/${widgetName}/index';`;
+  return `import '${widgetName}/index';`;
 }
 
 function fsExistsSync(path) {
@@ -39,6 +42,36 @@ function fsExistsSync(path) {
     return false;
   }
   return true;
+}
+
+function gitCommit(id) {
+  shell.exec('git add .');
+  shell.exec(`git commit -m '页面 ${id} 构建'`);
+  shell.exec(`git push`);
+  return shell.exec('git rev-parse HEAD').stdout.slice(0, 7) || "null";
+}
+
+function getWidgetVersionInfoFromNpm() {
+  return new Promise((resolve, reject) => {
+    http
+      .get(`${npm_package_path}`, resp => {
+        let data = '';
+        resp.on('data', chunk => {
+          data += chunk;
+        });
+        resp.on('end', () => {
+          let res = null;
+          try {
+            res = JSON.parse(data);
+          } catch (error) {}
+          resolve(res);
+        });
+      })
+      .on('error', err => {
+        reject(err);
+        console.log('Error: ' + err.message);
+      });
+  });
 }
 
 function getPageData(id) {
@@ -87,7 +120,7 @@ function traversal(root, callback) {
   root.forEach(walk);
 }
 
-function writeIndexFile(js_path, dest_dir, installWidgetMap) {
+function writeIndexFile(js_path, dest_dir, importWidgetMap) {
   console.log(
     chalk.blue(
       `\n正在生成 index.js \nfile: ${path.join(dest_dir, indexFileName)}`,
@@ -99,10 +132,11 @@ function writeIndexFile(js_path, dest_dir, installWidgetMap) {
         reject(err);
         return;
       }
-      let js_data = data;
-      Object.keys(installWidgetMap).forEach(key => {
-        js_data += installWidgetMap[key].importFile;
+      let js_data = '';
+      Object.keys(importWidgetMap).forEach(key => {
+        js_data += importWidgetMap[key];
       });
+      js_data += data;
       fs.writeFile(
         path.join(dest_dir, indexFileName),
         js_data,
@@ -120,7 +154,7 @@ function writeIndexFile(js_path, dest_dir, installWidgetMap) {
     });
   });
 }
-function writePkgFile(pkg_path, dest_dir, installWidgetMap, pageData) {
+function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
   console.log(
     chalk.blue(
       `\n正在生成 package.json \nfile: ${path.join(dest_dir, pkgFileName)}`,
@@ -138,9 +172,8 @@ function writePkgFile(pkg_path, dest_dir, installWidgetMap, pageData) {
       } catch (error) {}
       pkg.name = pageData.id;
       pkg.author = pageData.creater || 'banner man';
-      Object.keys(installWidgetMap).forEach(key => {
-        const name = `@banner-man/${key}`;
-        pkg.dependencies[name] = installWidgetMap[key].version;
+      Object.keys(installWidgetVersionMap).forEach(key => {
+        pkg.dependencies[key] = installWidgetVersionMap[key];
       });
       fs.writeFile(
         path.join(dest_dir, pkgFileName),
@@ -172,6 +205,8 @@ function injectScript2Html(html_path, dest_dir, pageData) {
       }
       const data_str = `<script type="text/javascript">window.BANNER_MAN_PAGE_DATA = ${JSON.stringify(
         pageData,
+      )};window.BANNER_MAN_DEPLOY_INFO = ${JSON.stringify(
+        deploy_info,
       )};</script>`;
       const html_data = data.replace(data_inject_comment, data_str);
       fs.writeFile(
@@ -206,26 +241,41 @@ function generate_page(id) {
   const pkg_path = path.join(templateDir, pkgFileName);
   const html_path = path.join(templateDir, htmlFileName);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
-  getPageData(id).then(res => {
-    console.log(chalk.blue(`\n页面 ${id} 数据拉取完成,生成页面中...`));
-    const pageData = res.data;
+  Promise.all([getPageData(id), getWidgetVersionInfoFromNpm()]).then(res => {
+    console.log(
+      chalk.blue(`\n页面 ${id} 数据及组件版本信息拉取完成,生成页面中...`),
+    );
+    const pageData = res[0].data;
+    const widgetInfoList = res[1];
+    const widgetVersionMap = {};
+    const importWidgetMap = {};
+    const installWidgetVersionMap = {};
+    widgetInfoList.forEach(val => {
+      widgetVersionMap[val.name] = val.version;
+    });
+    console.log(chalk.green(`组件版本最新信息:`));
+    console.log(widgetVersionMap);
     const data = pageData.data;
     pageData.id = id;
-    const installWidgetMap = {};
     traversal(data, node => {
-      if (!installWidgetMap[node.name]) {
-        installWidgetMap[node.name] = {
-          importFile: getWidgetImportStr(node.name),
-          version: widgetVersion[node.name],
-        };
+      if (!importWidgetMap[node.name]) {
+        const name = `${pkg_scope_prefix}${node.name}`;
+        importWidgetMap[name] = getWidgetImportStr(name);
+        installWidgetVersionMap[name] = widgetVersionMap[name];
       }
+    });
+    // 加入 render 和 common 两个包的更新
+    ['render', 'common'].forEach(name => {
+      const _name = `${pkg_scope_prefix}${name}`;
+      installWidgetVersionMap[_name] = widgetVersionMap[_name];
     });
     Promise.all([
       injectScript2Html(html_path, _dir, pageData),
-      writeIndexFile(js_path, _dir, installWidgetMap),
-      writePkgFile(pkg_path, _dir, installWidgetMap, pageData),
+      writeIndexFile(js_path, _dir, importWidgetMap),
+      writePkgFile(pkg_path, _dir, installWidgetVersionMap, pageData),
     ]).then(() => {
       console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
+      commit = gitCommit(id);
       build(id);
     });
   });
@@ -233,12 +283,19 @@ function generate_page(id) {
 
 // 构建项目
 async function build(id) {
+  deploy_info = {
+    COMMIT: commit,
+    DATE: new Date().toLocaleString(),
+    ID: id,
+  };
   // 每次构建都会重新请求页面数据, 升级依赖
   const _dir = path.join(projectDir, id);
   const dest_dir = path.join(_dir, 'dist');
   // shell.cd(_dir);
   // 安装依赖
+  console.log(chalk.yellow(`\n安装依赖中...\n`));
   shell.exec(`cd ${_dir} && npm install`);
+  console.log(chalk.yellow(`安装完成\n`));
   shell.exec(`cd ${_dir} && npm version patch`);
   if (fsExistsSync(dest_dir)) {
     shell.rm('-r', dest_dir);
@@ -246,6 +303,8 @@ async function build(id) {
   // 构建项目
   await rollupBuild(_dir, path.join(_dir, 'dist'));
   // 回调服务接口
+  console.log(chalk.green(`\n`));
+  console.log(deploy_info);
   console.log(chalk.green(`\n页面 ${id} 构建完成.\n`));
 }
 // 删除项目

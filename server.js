@@ -14,7 +14,7 @@ app.get('/generate/:id', function(req, res) {
   res.send(getRes('构建中'));
 });
 app.get('/build/:id', function(req, res) {
-  const msg = generate.generate_page(req.params.id);
+  generate.generate_page(req.params.id);
   res.send(getRes('构建中'));
 });
 
