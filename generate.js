@@ -48,7 +48,7 @@ function gitCommit(id) {
   shell.exec('git add .');
   shell.exec(`git commit -m '页面 ${id} 构建'`);
   shell.exec(`git push`);
-  return shell.exec('git rev-parse HEAD').stdout.slice(0, 7) || "null";
+  return shell.exec('git rev-parse HEAD').stdout.slice(0, 7) || 'null';
 }
 
 function getWidgetVersionInfoFromNpm() {
@@ -205,8 +205,6 @@ function injectScript2Html(html_path, dest_dir, pageData) {
       }
       const data_str = `<script type="text/javascript">window.BANNER_MAN_PAGE_DATA = ${JSON.stringify(
         pageData,
-      )};window.BANNER_MAN_DEPLOY_INFO = ${JSON.stringify(
-        deploy_info,
       )};</script>`;
       const html_data = data.replace(data_inject_comment, data_str);
       fs.writeFile(
@@ -301,7 +299,7 @@ async function build(id) {
     shell.rm('-r', dest_dir);
   }
   // 构建项目
-  await rollupBuild(_dir, path.join(_dir, 'dist'));
+  await rollupBuild(_dir, path.join(_dir, 'dist'), deploy_info);
   // 回调服务接口
   console.log(chalk.green(`\n`));
   console.log(deploy_info);

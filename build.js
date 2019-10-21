@@ -12,7 +12,7 @@ const progress = require('rollup-plugin-progress');
 const path = require('path');
 
 // see below for details on the options
-const inputOptions = (src_dir, dest_dir) => ({
+const inputOptions = (src_dir, dest_dir, info) => ({
   input: path.join(src_dir, 'index.js'),
   external: ['vue'],
   plugins: [
@@ -22,6 +22,7 @@ const inputOptions = (src_dir, dest_dir) => ({
     progress(),
     replace({
       'process.env.NODE_ENV': JSON.stringify('production'),
+      'process.env.DEPLOY_INFO': JSON.stringify(info),
       'process.env.VUE_ENV': JSON.stringify('browser'),
     }),
     filesize(), // 统计文件大小
@@ -51,9 +52,9 @@ const outputOptions = dest_dir => ({
   format: 'umd',
 });
 
-async function rollupBuild(src_dir, dest_dir) {
+async function rollupBuild(src_dir, dest_dir, info) {
   // create a bundle
-  const bundle = await rollup.rollup(inputOptions(src_dir, dest_dir));
+  const bundle = await rollup.rollup(inputOptions(src_dir, dest_dir, info));
 
   // or write the bundle to disk
   await bundle.write(outputOptions(dest_dir));
