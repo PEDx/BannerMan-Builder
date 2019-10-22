@@ -9,10 +9,11 @@ const path = require('path'),
   program = require('commander'),
   chalk = require('chalk'),
   shell = require('shelljs'),
-  http = require('http');
-let commit = '';
-const rollupBuild = require('./build.js');
+  http = require('http'),
+  rollupBuild = require('./build.js');
+
 // 生成项目
+let commit = '';
 const projectDir = './project';
 const templateDir = './template';
 const indexFileName = 'index.js';
@@ -22,14 +23,21 @@ const http_api_path = 'http://192.168.27.234:6060/api/v1/page';
 const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
 const pkg_scope_prefix = '@banner-man/';
-const widgetVersion = {
-  render: '^0.0.3',
-  common: '0.0.2',
-  'widget-button': '^0.0.5',
-  'widget-container': '0.0.2',
-  'widget-tabs': '0.0.2',
-  'widget-search': '0.0.2',
-};
+
+// 缓存模板文件
+const temp_index_js_file = fs.readFileSync(
+  path.join(templateDir, indexFileName),
+  { encoding: 'utf-8' },
+);
+const temp_pkg_json_file = fs.readFileSync(
+  path.join(templateDir, pkgFileName),
+  { encoding: 'utf-8' },
+);
+const temp_index_html_file = fs.readFileSync(
+  path.join(templateDir, htmlFileName),
+  { encoding: 'utf-8' },
+);
+
 let deploy_info = {};
 function getWidgetImportStr(widgetName) {
   return `import '${widgetName}/index';`;
@@ -120,132 +128,148 @@ function traversal(root, callback) {
   root.forEach(walk);
 }
 
-function writeIndexFile(js_path, dest_dir, importWidgetMap) {
+function writeIndexFile(dest_dir, importWidgetMap) {
   console.log(
     chalk.blue(
       `\n正在生成 index.js \nfile: ${path.join(dest_dir, indexFileName)}`,
     ),
   );
   return new Promise((resolve, reject) => {
-    fs.readFile(js_path, { encoding: 'utf-8' }, function(err, data) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      let js_data = '';
-      Object.keys(importWidgetMap).forEach(key => {
-        js_data += importWidgetMap[key];
-      });
-      js_data += data;
-      fs.writeFile(
-        path.join(dest_dir, indexFileName),
-        js_data,
-        {
-          encoding: 'utf-8',
-        },
-        (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        },
-      );
+    let js_data = '';
+    Object.keys(importWidgetMap).forEach(key => {
+      js_data += importWidgetMap[key];
     });
+    js_data += temp_index_js_file;
+    fs.writeFile(
+      path.join(dest_dir, indexFileName),
+      js_data,
+      {
+        encoding: 'utf-8',
+      },
+      (err, data) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      },
+    );
   });
 }
-function writePkgFile(pkg_path, dest_dir, installWidgetVersionMap, pageData) {
+
+function generate_pkg_json(
+  data,
+  dest_pkg_path,
+  installWidgetVersionMap,
+  pageData,
+) {
+  return new Promise((resolve, reject) => {
+    let pkg = {};
+    try {
+      pkg = JSON.parse(data);
+    } catch (error) {}
+    pkg.name = pageData.id;
+    console.log(pageData);
+    pkg.author = pageData.creater_name || 'banner man';
+    // 更新依赖
+    Object.keys(installWidgetVersionMap).forEach(key => {
+      pkg.dependencies[key] = installWidgetVersionMap[key];
+    });
+    fs.writeFile(
+      dest_pkg_path,
+      JSON.stringify(pkg),
+      {
+        encoding: 'utf-8',
+      },
+      (err, data) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      },
+    );
+  });
+}
+
+function writePkgFile(dest_dir, installWidgetVersionMap, pageData) {
   const dest_pkg_path = path.join(dest_dir, pkgFileName);
   console.log(chalk.blue(`\n正在生成 package.json \nfile: ${dest_pkg_path}`));
   return new Promise((resolve, reject) => {
-    const read_pkg_path = fsExistsSync(dest_pkg_path)
-      ? dest_pkg_path
-      : pkg_path;
-    fs.readFile(read_pkg_path, { encoding: 'utf-8' }, (err, data) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      let pkg = {};
-      try {
-        pkg = JSON.parse(data);
-      } catch (error) {}
-      pkg.name = pageData.id;
-      console.log(pageData);
-      pkg.author = pageData.creater_name || 'banner man';
-      // 更新依赖
-      Object.keys(installWidgetVersionMap).forEach(key => {
-        pkg.dependencies[key] = installWidgetVersionMap[key];
-      });
-      fs.writeFile(
-        dest_pkg_path,
-        JSON.stringify(pkg),
-        {
-          encoding: 'utf-8',
-        },
-        (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
+    if (fsExistsSync(dest_pkg_path)) {
+      fs.readFile(dest_pkg_path, { encoding: 'utf-8' }, (err, data) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        generate_pkg_json(
+          data,
+          dest_pkg_path,
+          installWidgetVersionMap,
+          pageData,
+        ).then(res => {
           resolve();
-        },
-      );
+        });
+      });
+      return;
+    }
+    generate_pkg_json(
+      temp_pkg_json_file,
+      dest_pkg_path,
+      installWidgetVersionMap,
+      pageData,
+    ).then(res => {
+      resolve();
     });
   });
 }
 
-function injectScript2Html(html_path, dest_dir, pageData) {
+function injectScript2Html(dest_dir, pageData) {
   console.log(
     chalk.blue(`\n正在生成 HTML \nfile: ${path.join(dest_dir, htmlFileName)}`),
   );
   return new Promise((resolve, reject) => {
-    fs.readFile(html_path, { encoding: 'utf-8' }, function(err, data) {
-      if (err) {
-        reject(err);
-        return;
-      }
-      const data_str = `<script type="text/javascript">window.BANNER_MAN_PAGE_DATA = ${JSON.stringify(
-        pageData,
-      )};</script>`;
-      const html_data = data.replace(data_inject_comment, data_str);
-      fs.writeFile(
-        path.join(dest_dir, htmlFileName),
-        html_data,
-        {
-          encoding: 'utf-8',
-        },
-        (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        },
-      );
-    });
+    const data_str = `<script type="text/javascript">window.BANNER_MAN_PAGE_DATA = ${JSON.stringify(
+      pageData,
+    )};</script>`;
+    const html_data = temp_index_html_file.replace(
+      data_inject_comment,
+      data_str,
+    );
+    fs.writeFile(
+      path.join(dest_dir, htmlFileName),
+      html_data,
+      {
+        encoding: 'utf-8',
+      },
+      (err, data) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      },
+    );
   });
 }
 
-function generate_project(id) {
-  const _dir = path.join(projectDir, id);
-  if (!fsExistsSync(_dir)) {
-    shell.mkdir(_dir);
-  }
-  generate_page(id);
-}
-
 function generate_page(id) {
+  console.time('generate_page');
   const _dir = path.join(projectDir, id);
-  const js_path = path.join(templateDir, indexFileName);
-  const pkg_path = path.join(templateDir, pkgFileName);
-  const html_path = path.join(templateDir, htmlFileName);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
   Promise.all([getPageData(id), getWidgetVersionInfoFromNpm()]).then(res => {
     console.log(
       chalk.blue(`\n页面 ${id} 数据及组件版本信息拉取完成,生成页面中...`),
     );
     const pageData = res[0].data;
+    if (!pageData.data) {
+      console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
+      return;
+    }
+    // 不存在就创建
+    if (!fsExistsSync(_dir)) {
+      shell.mkdir(_dir);
+    }
     const widgetInfoList = res[1];
     const widgetVersionMap = {};
     const importWidgetMap = {};
@@ -270,9 +294,9 @@ function generate_page(id) {
       installWidgetVersionMap[_name] = widgetVersionMap[_name];
     });
     Promise.all([
-      injectScript2Html(html_path, _dir, pageData),
-      writeIndexFile(js_path, _dir, importWidgetMap),
-      writePkgFile(pkg_path, _dir, installWidgetVersionMap, pageData),
+      injectScript2Html(_dir, pageData),
+      writeIndexFile(_dir, importWidgetMap),
+      writePkgFile(_dir, installWidgetVersionMap, pageData),
     ]).then(() => {
       console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
       shell.exec(`cd ${_dir} && npm version patch`);
@@ -306,6 +330,7 @@ async function build(id) {
   console.log(chalk.green(`\n`));
   console.log(deploy_info);
   console.log(chalk.green(`\n页面 ${id} 构建完成.\n`));
+  console.timeEnd('generate_page');
 }
 // 删除项目
 function deleteProj() {
@@ -315,7 +340,6 @@ function deleteProj() {
 program
   .version('0.0.1')
   .description('项目生成器')
-  .option('-g, --generate <id>', '生成页面项目')
   .option('-b, --build <id>', '构建一个项目')
   .option('-l, --list', '列出所有页面')
   .option('-d, --delete <id>', '删除项目')
@@ -327,18 +351,6 @@ program
         .forEach((dir, idx) =>
           console.log(chalk.blue(`${idx + 1}. ${dir.name}`)),
         );
-      console.log('\n');
-      return;
-    }
-    if (option.generate) {
-      const id = option.generate;
-      if (existsPageDir(id)) {
-        console.log(chalk.red('\n项目已经存在, 尝试重新构建\n'));
-        generate_page(option.id);
-      } else {
-        console.log(chalk.yellow('\n生成项目\n'));
-        generate_project(option.id);
-      }
       console.log('\n');
       return;
     }
@@ -370,5 +382,4 @@ program.parse(process.argv);
 
 module.exports = {
   generate_page,
-  generate_project,
 };
