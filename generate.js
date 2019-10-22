@@ -253,57 +253,60 @@ function injectScript2Html(dest_dir, pageData) {
   });
 }
 
-function generate_page(id) {
+async function generate_page(id) {
   console.time('generate_page');
   const _dir = path.join(projectDir, id);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
-  Promise.all([getPageData(id), getWidgetVersionInfoFromNpm()]).then(res => {
-    console.log(
-      chalk.blue(`\n页面 ${id} 数据及组件版本信息拉取完成,生成页面中...`),
-    );
-    const pageData = res[0].data;
-    if (!pageData.data) {
-      console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
-      return;
-    }
-    // 不存在就创建
-    if (!fsExistsSync(_dir)) {
-      shell.mkdir(_dir);
-    }
-    const widgetInfoList = res[1];
-    const widgetVersionMap = {};
-    const importWidgetMap = {};
-    const installWidgetVersionMap = {};
-    widgetInfoList.forEach(val => {
-      widgetVersionMap[val.name] = val.version;
-    });
-    console.log(chalk.green(`组件版本最新信息:`));
-    console.log(widgetVersionMap);
-    const data = pageData.data;
-    pageData.id = id;
-    traversal(data, node => {
-      if (!importWidgetMap[node.name]) {
-        const name = `${pkg_scope_prefix}${node.name}`;
-        importWidgetMap[name] = getWidgetImportStr(name);
-        installWidgetVersionMap[name] = widgetVersionMap[name];
-      }
-    });
-    // 加入 render 和 common 两个包的更新
-    ['render', 'common'].forEach(name => {
-      const _name = `${pkg_scope_prefix}${name}`;
-      installWidgetVersionMap[_name] = widgetVersionMap[_name];
-    });
-    Promise.all([
-      injectScript2Html(_dir, pageData),
-      writeIndexFile(_dir, importWidgetMap),
-      writePkgFile(_dir, installWidgetVersionMap, pageData),
-    ]).then(() => {
-      console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
-      shell.exec(`cd ${_dir} && npm version patch`);
-      // commit = gitCommit(id);
-      build(id);
-    });
+  const res = await Promise.all([
+    getPageData(id),
+    getWidgetVersionInfoFromNpm(),
+  ]);
+
+  const pageData = res[0].data;
+  if (!pageData || !pageData.data) {
+    console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
+    return '页面数据不存在, 或已删除.';
+  }
+  console.log(
+    chalk.blue(`\n页面 ${id} 数据及组件版本信息拉取完成,生成页面中...`),
+  );
+  // 不存在就创建
+  if (!fsExistsSync(_dir)) {
+    shell.mkdir(_dir);
+  }
+  const widgetInfoList = res[1];
+  const widgetVersionMap = {};
+  const importWidgetMap = {};
+  const installWidgetVersionMap = {};
+  widgetInfoList.forEach(val => {
+    widgetVersionMap[val.name] = val.version;
   });
+  console.log(chalk.green(`组件版本最新信息:`));
+  console.log(widgetVersionMap);
+  const data = pageData.data;
+  pageData.id = id;
+  traversal(data, node => {
+    if (!importWidgetMap[node.name]) {
+      const name = `${pkg_scope_prefix}${node.name}`;
+      importWidgetMap[name] = getWidgetImportStr(name);
+      installWidgetVersionMap[name] = widgetVersionMap[name];
+    }
+  });
+  // 加入 render 和 common 两个包的更新
+  ['render', 'common'].forEach(name => {
+    const _name = `${pkg_scope_prefix}${name}`;
+    installWidgetVersionMap[_name] = widgetVersionMap[_name];
+  });
+  await Promise.all([
+    injectScript2Html(_dir, pageData),
+    writeIndexFile(_dir, importWidgetMap),
+    writePkgFile(_dir, installWidgetVersionMap, pageData),
+  ]);
+  console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
+  shell.exec(`cd ${_dir} && npm version patch`);
+  // commit = gitCommit(id);
+  await build(id);
+  return '页面构建完成';
 }
 
 // 构建项目
