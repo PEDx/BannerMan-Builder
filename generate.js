@@ -5,7 +5,6 @@
 const path = require('path'),
   util = require('util'),
   fs = require('fs'),
-  rd = require('rd'),
   program = require('commander'),
   chalk = require('chalk'),
   shell = require('shelljs'),
