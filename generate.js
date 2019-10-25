@@ -351,9 +351,9 @@ function delete_project(id) {
   });
 }
 // 列出项目
-function list_project(dir) {
+function list_project() {
   return new Promise((resolve, reject) => {
-    fs.readdir(dir, (err, file) => {
+    fs.readdir(projectDir, (err, file) => {
       if (err) reject(err);
       resolve(file);
     });
@@ -369,7 +369,7 @@ program
   .action(option => {
     if (option.list) {
       console.log('\n所有页面项目\n');
-      list_project(projectDir);
+      list_project();
       console.log('\n');
       return;
     }

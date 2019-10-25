@@ -1,5 +1,9 @@
 const express = require('express');
-const { generate_page, delete_project } = require('./generate.js');
+const {
+  generate_page,
+  delete_project,
+  list_project,
+} = require('./generate.js');
 const app = express();
 
 const block_map = {};
