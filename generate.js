@@ -24,6 +24,11 @@ const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
 const pkg_scope_prefix = '@banner-man/';
 
+// 不存在project就创建
+if (!fsExistsSync(projectDir)) {
+  shell.mkdir(projectDir);
+}
+
 // 缓存模板文件
 const temp_index_js_file = fs.readFileSync(
   path.join(templateDir, indexFileName),
@@ -52,11 +57,14 @@ function fsExistsSync(path) {
   return true;
 }
 
-function gitCommit(id) {
-  shell.exec('git add .');
-  shell.exec(`git commit -m '页面 ${id} 构建'`);
-  shell.exec(`git push`);
-  return shell.exec('git rev-parse HEAD').stdout.slice(0, 7) || 'null';
+function gitCommit(dir, id) {
+  return (
+    shell
+      .exec(
+        `cd ${dir} && git add . && git commit -m '页面构建' && git rev-parse HEAD`,
+      )
+      .stdout.slice(0, 7) || 'null'
+  );
 }
 
 function getWidgetVersionInfoFromNpm() {
@@ -257,12 +265,8 @@ async function generate_page(id) {
   console.time('generate_page');
   const _dir = path.join(projectDir, id);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
-  const res = await Promise.all([
-    getPageData(id),
-    getWidgetVersionInfoFromNpm(),
-  ]);
+  const pageData = await getPageData(id);
 
-  const pageData = res[0].data;
   if (!pageData || !pageData.data) {
     console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
     return '页面数据不存在, 或已删除.';
@@ -273,15 +277,15 @@ async function generate_page(id) {
   // 不存在就创建
   if (!fsExistsSync(_dir)) {
     shell.mkdir(_dir);
+    shell.exec(
+      `cd ${dir} && echo 'node_modules/\ndist/' > .gitignore && git init`,
+    );
   }
-  const widgetInfoList = res[1];
-  const widgetVersionMap = {};
+  const widgetVersionMap = pageData.data.widgets_version;
   const importWidgetMap = {};
   const installWidgetVersionMap = {};
-  widgetInfoList.forEach(val => {
-    widgetVersionMap[val.name] = val.version;
-  });
-  console.log(chalk.green(`组件版本最新信息:`));
+
+  console.log(chalk.green(`组件构建版本:`));
   console.log(widgetVersionMap);
   const data = pageData.data;
   pageData.id = id;
@@ -304,7 +308,7 @@ async function generate_page(id) {
   ]);
   console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
   shell.exec(`cd ${_dir} && npm version patch`);
-  // commit = gitCommit(id);
+  commit = gitCommit(_dir, id);
   await build(id);
   return '页面构建完成';
 }
