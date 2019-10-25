@@ -59,11 +59,7 @@ function fsExistsSync(path) {
 
 function gitCommit(dir, id) {
   return (
-    shell
-      .exec(
-        `cd ${dir} && git add . && git commit -m '页面构建' && git rev-parse HEAD`,
-      )
-      .stdout.slice(0, 7) || 'null'
+    shell.exec(`cd ${dir} && git rev-parse HEAD`).stdout.slice(0, 7) || 'null'
   );
 }
 
@@ -265,7 +261,7 @@ async function generate_page(id) {
   console.time('generate_page');
   const _dir = path.join(projectDir, id);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
-  const pageData = await getPageData(id);
+  const pageData = (await getPageData(id) || {}).data;
 
   if (!pageData || !pageData.data) {
     console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
@@ -278,9 +274,9 @@ async function generate_page(id) {
   if (!fsExistsSync(_dir)) {
     shell.mkdir(_dir);
     shell.exec(`echo 'node_modules/\ndist/' > ${_dir}/.gitignore`);
-    shell.exec(`cd ${dir} && git init`);
+    shell.exec(`cd ${_dir} && git init`);
   }
-  const widgetVersionMap = pageData.data.widgets_version;
+  const widgetVersionMap = pageData.widgets_version;
   const importWidgetMap = {};
   const installWidgetVersionMap = {};
 
@@ -300,38 +296,44 @@ async function generate_page(id) {
     const _name = `${pkg_scope_prefix}${name}`;
     installWidgetVersionMap[_name] = widgetVersionMap[_name];
   });
+
   await Promise.all([
     injectScript2Html(_dir, pageData),
     writeIndexFile(_dir, importWidgetMap),
     writePkgFile(_dir, installWidgetVersionMap, pageData),
   ]);
   console.log(chalk.green(`\n页面生成完成, 现在开始构建页面...\n`));
+  await install(id);
+  // 版本提交
   shell.exec(`cd ${_dir} && npm version patch`);
   commit = gitCommit(_dir, id);
-  await build(id);
+  await build(_dir, id);
   return '页面构建完成';
 }
 
 // 构建项目
-async function build(id) {
+async function install(id) {
+  // 每次构建都会重新请求页面数据, 升级依赖
+  const _dir = path.join(projectDir, id);
+  // 安装依赖
+  console.log(chalk.yellow(`\n安装依赖中...\n`));
+  shell.exec(`cd ${_dir} && npm install`);
+  console.log(chalk.yellow(`安装完成\n`));
+  console.log(chalk.yellow(`开始打包构建\n`));
+}
+
+async function build(src_dir, id) {
   deploy_info = {
     COMMIT: commit,
     DATE: new Date().toLocaleString(),
     ID: id,
   };
-  // 每次构建都会重新请求页面数据, 升级依赖
-  const _dir = path.join(projectDir, id);
-  const dest_dir = path.join(_dir, 'dist');
-  // shell.cd(_dir);
-  // 安装依赖
-  console.log(chalk.yellow(`\n安装依赖中...\n`));
-  shell.exec(`cd ${_dir} && npm install`);
-  console.log(chalk.yellow(`安装完成\n`));
+  const dest_dir = path.join(src_dir, 'dist');
   if (fsExistsSync(dest_dir)) {
     shell.rm('-r', dest_dir);
   }
   // 构建项目
-  await rollupBuild(_dir, path.join(_dir, 'dist'), deploy_info);
+  await rollupBuild(src_dir, dest_dir, deploy_info);
   // 回调服务接口
   console.log(chalk.green(`\n`));
   console.log(deploy_info);
