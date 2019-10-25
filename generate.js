@@ -277,9 +277,8 @@ async function generate_page(id) {
   // 不存在就创建
   if (!fsExistsSync(_dir)) {
     shell.mkdir(_dir);
-    shell.exec(
-      `cd ${dir} && echo 'node_modules/\ndist/' > .gitignore && git init`,
-    );
+    shell.exec(`echo 'node_modules/\ndist/' > ${_dir}/.gitignore`);
+    shell.exec(`cd ${dir} && git init`);
   }
   const widgetVersionMap = pageData.data.widgets_version;
   const importWidgetMap = {};
