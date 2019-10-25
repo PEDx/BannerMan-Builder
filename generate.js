@@ -261,7 +261,7 @@ async function generate_page(id) {
   console.time('generate_page');
   const _dir = path.join(projectDir, id);
   console.log(chalk.blue(`\n正在拉取页面 ${id} 服务端数据`));
-  const pageData = (await getPageData(id) || {}).data;
+  const pageData = ((await getPageData(id)) || {}).data;
 
   if (!pageData || !pageData.data) {
     console.log(chalk.red('\n页面数据不存在, 或已删除.\n'));
@@ -341,8 +341,24 @@ async function build(src_dir, id) {
   console.timeEnd('generate_page');
 }
 // 删除项目
-function deleteProj() {
-  console.log('delete');
+function delete_project(id) {
+  const projDir = path.resolve(projectDir, id);
+  return new Promise((resolve, reject) => {
+    fs.rmdir(projDir, err => {
+      if (err) reject(err);
+      console.log('delete');
+      resolve();
+    });
+  });
+}
+// 列出项目
+function list_project(dir) {
+  return new Promise((resolve, reject) => {
+    fs.readdir(dir, (err, file) => {
+      if (err) reject(err);
+      resolve(file);
+    });
+  });
 }
 
 program
@@ -354,11 +370,7 @@ program
   .action(option => {
     if (option.list) {
       console.log('\n所有页面项目\n');
-      shell
-        .ls('-l', projectDir)
-        .forEach((dir, idx) =>
-          console.log(chalk.blue(`${idx + 1}. ${dir.name}`)),
-        );
+      list_project(projectDir);
       console.log('\n');
       return;
     }
@@ -377,7 +389,7 @@ program
       const id = option.delete;
       console.log(chalk.green('删除项目\n'));
       if (existsPageDir(id)) {
-        deleteProj(option.build);
+        delete_project(id);
         console.log('\n');
         return;
       }
@@ -390,4 +402,6 @@ program.parse(process.argv);
 
 module.exports = {
   generate_page,
+  delete_project,
+  list_project,
 };

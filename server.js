@@ -1,5 +1,5 @@
 const express = require('express');
-const { generate_page } = require('./generate.js');
+const { generate_page, delete_project } = require('./generate.js');
 const app = express();
 
 const block_map = {};
@@ -21,6 +21,21 @@ app.get('/build/:id', function(req, res) {
       delete block_map[id];
       res.send({ msg: `页面 ${id} 构建出现异常,请联系管理员` });
     });
+});
+app.get('/projects', function(req, res) {
+  list_project().then(projects => {
+    res.send({ projects });
+  });
+});
+app.get('/delete/:id', function(req, res) {
+  const id = req.params.id;
+  if (block_map[id]) {
+    res.send({ msg: `页面 ${id} 构建进行中,请稍后再试` });
+    return;
+  }
+  delete_project(id).then(() => {
+    res.send({ msg: 'delete success' });
+  });
 });
 
 console.log('listen(3080)');
