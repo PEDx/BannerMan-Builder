@@ -33,12 +33,13 @@ app.get('/projects', function(req, res) {
 });
 app.get('/delete/:id', function(req, res) {
   const id = req.params.id;
+  console.log(id);
   if (block_map[id]) {
     res.send({ msg: `页面 ${id} 构建进行中,请稍后再试` });
     return;
   }
-  delete_project(id).then(() => {
-    res.send({ msg: 'delete success' });
+  delete_project(id).then(msg => {
+    res.send(msg);
   });
 });
 

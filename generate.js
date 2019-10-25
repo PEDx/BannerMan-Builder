@@ -30,15 +30,15 @@ if (!fsExistsSync(projectDir)) {
 
 // 缓存模板文件
 const temp_index_js_file = fs.readFileSync(
-  path.join(templateDir, indexFileName),
+  path.resolve(templateDir, indexFileName),
   { encoding: 'utf-8' },
 );
 const temp_pkg_json_file = fs.readFileSync(
-  path.join(templateDir, pkgFileName),
+  path.resolve(templateDir, pkgFileName),
   { encoding: 'utf-8' },
 );
 const temp_index_html_file = fs.readFileSync(
-  path.join(templateDir, htmlFileName),
+  path.resolve(templateDir, htmlFileName),
   { encoding: 'utf-8' },
 );
 
@@ -342,11 +342,14 @@ async function build(src_dir, id) {
 // 删除项目
 function delete_project(id) {
   const projDir = path.resolve(projectDir, id);
+  if (!fsExistsSync(projDir)) {
+    return Promise.resolve({ msg: 'project no exists' });
+  }
   return new Promise((resolve, reject) => {
     fs.rmdir(projDir, err => {
       if (err) reject(err);
       console.log('delete');
-      resolve();
+      resolve({ msg: 'delete success' });
     });
   });
 }
