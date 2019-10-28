@@ -1,10 +1,13 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const {
   generate_page,
   delete_project,
   list_project,
 } = require('./generate.js');
 const app = express();
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
 const block_map = {};
 
@@ -41,6 +44,13 @@ app.get('/delete/:id', function(req, res) {
   delete_project(id).then(msg => {
     res.send(msg);
   });
+});
+
+// 用来配合发包工具 publish 时,解开包
+app.post('/unwrapp', function(req, res) {
+  console.log(req);
+  console.log(req.params);
+  res.send({ msg: 'ok' });
 });
 
 console.log('listen(3080)');
