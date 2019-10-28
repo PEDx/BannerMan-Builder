@@ -392,7 +392,7 @@ function unwrap_npm_package({ name, version }) {
   }
   // 解压文件到目录
   compressing.tgz
-    .uncompress(pck_path, unwrap_destination_dir)
+    .uncompress(pck_path, pck_dest_path)
     .then(res => {
       console.log(`${pck_path} uncompress completed`);
     })
