@@ -383,6 +383,10 @@ function unwrap_npm_package({ name, version }) {
   const pkg_name = `${_name}-${_version}.tgz`;
   const _path = path.resolve(npm_storage_path, name);
   const pck_path = path.resolve(_path, pkg_name);
+  const pck_dest_path = path.resolve(
+    unwrap_destination_dir,
+    `${name}@${_version}`,
+  );
   if (!fsExistsSync(_path)) {
     return;
   }
