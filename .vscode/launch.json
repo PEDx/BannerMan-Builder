@@ -6,6 +6,12 @@
   "configurations": [
     {
       "type": "node",
+      "request": "launch",
+      "name": "Launch Program",
+      "program": "${workspaceFolder}/server.js"
+    },
+    {
+      "type": "node",
       "request": "attach",
       "name": "Attach to Remote",
       "address": "122.51.85.144",

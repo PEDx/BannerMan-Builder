@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const {
   generate_page,
   delete_project,
+  unwrap_npm_package,
   list_project,
 } = require('./generate.js');
 const app = express();
@@ -47,9 +48,9 @@ app.get('/delete/:id', function(req, res) {
 });
 
 // 用来配合发包工具 publish 时,解开包
-app.post('/unwrapp', function(req, res) {
-  console.log(req);
-  console.log(req.params);
+app.post('/unwrap', function(req, res) {
+  const data = req.body;
+  unwrap_npm_package(data);
   res.send({ msg: 'ok' });
 });
 

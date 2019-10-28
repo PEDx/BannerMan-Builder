@@ -9,7 +9,8 @@ const path = require('path'),
   chalk = require('chalk'),
   shell = require('shelljs'),
   http = require('http'),
-  rollupBuild = require('./build.js');
+  rollupBuild = require('./build.js'),
+  compressing = require('compressing');
 
 // 生成项目
 let commit = '';
@@ -22,10 +23,16 @@ const http_api_path = 'http://192.168.27.234:6060/api/v1/page';
 const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
 const pkg_scope_prefix = '@banner-man/';
+const npm_storage_path = '/root/.local/share/verdaccio/storage';
+const unwrap_destination_dir = '/root/widget_storage';
 
 // 不存在project就创建
 if (!fsExistsSync(projectDir)) {
   shell.mkdir(projectDir);
+}
+// 不存在 unwrap_destination_dir 就创建
+if (!fsExistsSync(unwrap_destination_dir)) {
+  shell.mkdir(unwrap_destination_dir);
 }
 
 // 缓存模板文件
@@ -363,6 +370,33 @@ function list_project() {
   });
 }
 
+/*
+name:"@banner-man/widget-tabs"
+version:"@banner-man/widget-tabs@0.0.22"
+*/
+function unwrap_npm_package({ name, version }) {
+  console.log(`包的解压目录为: ${npm_storage_path}`);
+  let _name = name.split('/');
+  _name = _name[_name.length - 1];
+  let _version = version.split('@');
+  _version = _version[_version.length - 1];
+  const pkg_name = `${_name}-${_version}.tgz`;
+  const _path = path.resolve(npm_storage_path, name);
+  const pck_path = path.resolve(_path, pkg_name);
+  if (!fsExistsSync(_path)) {
+    return;
+  }
+  // 解压文件到目录
+  compressing.tgz
+    .uncompress(pck_path, unwrap_destination_dir)
+    .then(res => {
+      console.log(`${pck_path} uncompress completed`);
+    })
+    .catch(() => {
+      console.log(`${pck_path} uncompress failed`);
+    });
+}
+
 program
   .version('0.0.1')
   .description('项目生成器')
@@ -405,5 +439,6 @@ program.parse(process.argv);
 module.exports = {
   generate_page,
   delete_project,
+  unwrap_npm_package,
   list_project,
 };
