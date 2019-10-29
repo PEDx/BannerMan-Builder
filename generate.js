@@ -392,7 +392,7 @@ function unwrap_npm_package({ name, version }) {
   // 解压文件到目录
   shell.mkdir('-p', pck_dest_path);
   shell.exec(
-    `tar -xvf ${pck_path} -C ${pck_dest_path} package/dist/index.js --strip-components=2`,
+    `tar -xvf ${pck_path} -C ${pck_dest_path} package/dist/* --strip-components=2`,
     { async: true },
     () => {
       console.log(`${pck_path} uncompress completed`);
