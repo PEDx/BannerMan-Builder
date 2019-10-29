@@ -9,8 +9,7 @@ const path = require('path'),
   chalk = require('chalk'),
   shell = require('shelljs'),
   http = require('http'),
-  rollupBuild = require('./build.js'),
-  compressing = require('compressing');
+  rollupBuild = require('./build.js');
 
 // 生成项目
 let commit = '';
@@ -391,14 +390,14 @@ function unwrap_npm_package({ name, version }) {
     return;
   }
   // 解压文件到目录
-  compressing.tgz
-    .uncompress(pck_path, pck_dest_path)
-    .then(res => {
+  shell.mkdir('-p', pck_dest_path);
+  shell.exec(
+    `tar -xvf ${pck_path} -C ${pck_dest_path} package/dist/index.js --strip-components=2`,
+    { async: true },
+    () => {
       console.log(`${pck_path} uncompress completed`);
-    })
-    .catch(() => {
-      console.log(`${pck_path} uncompress failed`);
-    });
+    },
+  );
 }
 
 program
