@@ -4,16 +4,12 @@
 
 ```js
 // 由服务接口生成
-
-// 生成项目
-app.get('/generate/:id', function(req, res) {
-  generate.generate_project(req.params.id);
-});
-
 // 构建项目
-app.get('/build/:id', function(req, res) {
-  generate.generate_page(req.params.id);
-});
+app.get('/build/:id');
+// 删除项目
+app.get('/delete/:id');
+// 列出所有项目
+app.get('/projects');
 ```
 
 ```bash

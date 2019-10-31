@@ -9,7 +9,7 @@ const path = require('path'),
   chalk = require('chalk'),
   shell = require('shelljs'),
   http = require('http'),
-  rollupBuild = require('./build.js');
+  rollupBuild = require('./build.js/index.js');
 
 // 生成项目
 let commit = '';
@@ -23,14 +23,14 @@ const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
 const pkg_scope_prefix = '@banner-man/';
 const npm_storage_path = '/root/.local/share/verdaccio/storage';
-const unwrap_destination_dir = '/root/widget_storage';
+const unwrap_destination_dir = 'widget_storage/';
 
 // 不存在project就创建
-if (!fsExistsSync(projectDir)) {
+if (!fs.existsSync(projectDir)) {
   shell.mkdir(projectDir);
 }
 // 不存在 unwrap_destination_dir 就创建
-if (!fsExistsSync(unwrap_destination_dir)) {
+if (!fs.existsSync(path.join(process.env.HOME, unwrap_destination_dir))) {
   shell.mkdir(unwrap_destination_dir);
 }
 
@@ -364,6 +364,7 @@ function list_project() {
   return new Promise((resolve, reject) => {
     fs.readdir(projectDir, (err, file) => {
       if (err) reject(err);
+      console.log(file);
       resolve(file);
     });
   });

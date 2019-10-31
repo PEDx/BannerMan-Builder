@@ -5,7 +5,7 @@ const {
   delete_project,
   unwrap_npm_package,
   list_project,
-} = require('./generate.js');
+} = require('../generate.js');
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
