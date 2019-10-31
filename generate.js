@@ -23,14 +23,14 @@ const npm_package_path = 'http://npm.bannerman.club/-/verdaccio/packages';
 const data_inject_comment = '<!-- PAGE_DATA_INJECT_HERE -->';
 const pkg_scope_prefix = '@banner-man/';
 const npm_storage_path = '/root/.local/share/verdaccio/storage';
-const unwrap_destination_dir = 'widget_storage/';
+const unwrap_destination_dir =  path.join(process.env.HOME, 'widget_storage/');
 
 // 不存在project就创建
 if (!fs.existsSync(projectDir)) {
   shell.mkdir(projectDir);
 }
 // 不存在 unwrap_destination_dir 就创建
-if (!fs.existsSync(path.join(process.env.HOME, unwrap_destination_dir))) {
+if (!fs.existsSync(unwrap_destination_dir)) {
   shell.mkdir(unwrap_destination_dir);
 }
 
@@ -378,6 +378,7 @@ function unwrap_npm_package({ name, version }) {
   console.log(`包的解压目录为: ${npm_storage_path}`);
   let _name = name.split('/');
   _name = _name[_name.length - 1];
+  if(_name === "common") return;
   let _version = version.split('@');
   _version = _version[_version.length - 1];
   const pkg_name = `${_name}-${_version}.tgz`;
@@ -392,13 +393,26 @@ function unwrap_npm_package({ name, version }) {
   }
   // 解压文件到目录
   shell.mkdir('-p', pck_dest_path);
-  shell.exec(
-    `tar -xvf ${pck_path} -C ${pck_dest_path} package/dist/* --strip-components=2`,
-    { async: true },
-    () => {
-      console.log(`${pck_path} uncompress completed`);
-    },
-  );
+  try {
+    shell.exec(
+      `tar -xvf ${pck_path} -C ${pck_dest_path} package/dist/* --strip-components=2`,
+      { async: true },
+      () => {
+        console.log(`${pck_path} -> ${pck_dest_path} uncompress completed`);
+      },
+    );
+  } catch (error) {
+    console.error(`${pck_path} -> ${pck_dest_path} uncompress failed`);
+  }
+}
+
+
+function unwrap_all_newest_npm_package() {
+  getWidgetVersionInfoFromNpm().then(res => {
+    res.forEach(val => {
+      unwrap_npm_package({name: val.name, version: `${val.name}@${val.version}`})
+    })
+  })
 }
 
 program
@@ -444,5 +458,6 @@ module.exports = {
   generate_page,
   delete_project,
   unwrap_npm_package,
+  unwrap_all_newest_npm_package,
   list_project,
 };

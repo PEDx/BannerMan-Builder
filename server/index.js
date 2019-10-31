@@ -4,6 +4,7 @@ const {
   generate_page,
   delete_project,
   unwrap_npm_package,
+  unwrap_all_newest_npm_package,
   list_project,
 } = require('../generate.js');
 const app = express();
@@ -51,6 +52,10 @@ app.get('/delete/:id', function(req, res) {
 app.post('/unwrap', function(req, res) {
   const data = req.body;
   unwrap_npm_package(data);
+  res.send({ msg: 'ok' });
+});
+app.get('/unwrapAll', function(req, res) {
+  unwrap_all_newest_npm_package();
   res.send({ msg: 'ok' });
 });
 
