@@ -9,7 +9,7 @@ const path = require('path'),
   chalk = require('chalk'),
   shell = require('shelljs'),
   http = require('http'),
-  rollupBuild = require('./build.js/index.js');
+  rollupBuild = require('./build.js');
 
 // 生成项目
 let commit = '';
